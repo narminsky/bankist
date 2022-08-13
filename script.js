@@ -58,15 +58,102 @@ const inputLoanAmount = document.querySelector('.form__input--loan-amount');
 const inputCloseUsername = document.querySelector('.form__input--user');
 const inputClosePin = document.querySelector('.form__input--pin');
 
+// creating username
+accounts.forEach(obj => obj.username = obj.owner.toLowerCase().split(' ')
+  .map(item => item[0]).join(''));
+
+// movements of user
 const showMovements = function (movement) {
   movement.forEach(function (movement, i) {
     const type = movement > 0 ? 'deposit' : 'withdrawal';
     let str = `<div class="movements__row">
     <div class="movements__type movements__type--${type}">${i + 1} ${type}</div>
-    <div class="movements__date">3 days ago</div>
     <div class="movements__value">${movement}€</div>
   </div>`;
     containerMovements.insertAdjacentHTML('afterbegin', str);
   });
 };
-showMovements(account1.movements);
+
+// balance
+const calcBalance = function (acc) {
+  acc.balance = acc.movements.reduce((acc, move) => acc + move, 0);
+  labelBalance.innerText = `${acc.balance}€`;
+};
+
+// summary
+const inOutInterest = function (account) {
+  // income
+  const income = account.movements
+    .filter(move => move > 0)
+    .reduce((acc, move) => acc + move, 0);
+  labelSumIn.innerText = income + "€";
+  // outcome
+  const outcome = account.movements
+    .filter(move => move < 0)
+    .reduce((acc, move) => acc + move, 0);
+  labelSumOut.innerText = Math.abs(outcome) + "€";
+  // interest 1.2% of deposits
+  const interest = account.movements
+    .filter(move => move > 0)
+    .map(positiveMove => (positiveMove * account.interestRate / 100) >= 1 ? positiveMove * 1.2 / 100 : 0)
+    .reduce((acc, move) => acc + move, 0);
+  labelSumInterest.innerText = interest.toFixed(2) + "€";
+};
+
+// Updating UI
+const updateUI = function (currentUser) {
+  // calcBalance
+  calcBalance(currentUser);
+  // calcSummary
+  inOutInterest(currentUser);
+  // Display movements
+  showMovements(currentUser.movements);
+};
+
+// login btn
+let currentUser;
+btnLogin.addEventListener('click', function (e) {
+  e.preventDefault();
+  currentUser = accounts.find(acc => acc.username === inputLoginUsername.value);
+  if (currentUser) {
+    if (currentUser.pin == inputLoginPin.value) {
+      labelWelcome.innerText = `Hello, ${currentUser.owner.split(' ')[0]}!`;
+      // Update UI
+      updateUI(currentUser);
+      // calcBalance
+      calcBalance(currentUser);
+      // calcSummary
+      inOutInterest(currentUser);
+      // Display movements
+      showMovements(currentUser.movements);
+      // Login form opacity
+      containerApp.style.opacity = 100;
+    } else
+      alert('Password is incorrect!');
+  } else
+    alert(`This user doesn't exist!`);
+  inputLoginUsername.value = inputLoginPin.value = '';
+  inputLoginPin.blur();
+});
+
+// transfer money to another user
+btnTransfer.addEventListener('click', function (e) {
+  e.preventDefault();
+  const transferToWhomObj = accounts.find(function (acc) {
+    return acc.username === inputTransferTo.value
+  });
+  const transferAmount = Number(inputTransferAmount.value);
+
+  inputTransferAmount.value = inputTransferTo.value = '';
+
+  if (transferAmount > 0 && transferToWhomObj && transferToWhomObj?.username !== currentUser.username) {
+    // Doing transfer
+    currentUser.movements.push(-transferAmount);
+    transferToWhomObj.movements.push(transferAmount);
+    // Update UI
+    updateUI(currentUser);
+    console.log(transferToWhomObj, transferAmount);
+  } else {
+    console.log('there is a problem.');
+  }
+});
