@@ -63,8 +63,12 @@ accounts.forEach(obj => obj.username = obj.owner.toLowerCase().split(' ')
   .map(item => item[0]).join(''));
 
 // movements of user
-const showMovements = function (movement) {
-  movement.forEach(function (movement, i) {
+const showMovements = function (movement, sort = false) {
+  // sort ? or not
+  const movs = sort ? movement.slice().sort((a, b) => a - b) : movement;
+  // showing movements
+  containerMovements.innerHTML = '';
+  movs.forEach(function (movement, i) {
     const type = movement > 0 ? 'deposit' : 'withdrawal';
     let str = `<div class="movements__row">
     <div class="movements__type movements__type--${type}">${i + 1} ${type}</div>
@@ -73,6 +77,14 @@ const showMovements = function (movement) {
     containerMovements.insertAdjacentHTML('afterbegin', str);
   });
 };
+
+// sort
+let sorted = false;
+btnSort.addEventListener('click', function (e) {
+  e.preventDefault();
+  sorted = !sorted;
+  showMovements(currentUser.movements, sorted);
+});
 
 // balance
 const calcBalance = function (acc) {
@@ -95,12 +107,12 @@ const inOutInterest = function (account) {
   // interest 1.2% of deposits
   const interest = account.movements
     .filter(move => move > 0)
-    .map(positiveMove => (positiveMove * account.interestRate / 100) >= 1 ? positiveMove * 1.2 / 100 : 0)
+    .map(positiveMove => (positiveMove * account.interestRate / 100) >= 1 ? positiveMove * account.interestRate / 100 : 0)
     .reduce((acc, move) => acc + move, 0);
   labelSumInterest.innerText = interest.toFixed(2) + "€";
 };
 
-// Updating UI
+// Updating UI function
 const updateUI = function (currentUser) {
   // calcBalance
   calcBalance(currentUser);
@@ -112,6 +124,7 @@ const updateUI = function (currentUser) {
 
 // login btn
 let currentUser;
+
 btnLogin.addEventListener('click', function (e) {
   e.preventDefault();
   currentUser = accounts.find(acc => acc.username === inputLoginUsername.value);
@@ -156,4 +169,32 @@ btnTransfer.addEventListener('click', function (e) {
   } else {
     console.log('there is a problem.');
   }
+});
+
+// request loan
+btnLoan.addEventListener('click', function (e) {
+  e.preventDefault();
+  const amount = Number(inputLoanAmount.value);
+  if (amount > 0 && currentUser.movements.some(mov => mov >= amount * 0.1)) {
+    currentUser.movements.push(amount);
+    updateUI(currentUser);
+  }
+  inputLoanAmount.value = '';
+});
+
+// close current account
+btnClose.addEventListener('click', function (e) {
+  e.preventDefault();
+  if (inputCloseUsername.value === currentUser.username && Number(inputClosePin.value) === currentUser.pin) {
+    console.log('working');
+    const index = accounts.findIndex(function (acc) {
+      return acc.username === currentUser.username;
+    });
+    // Delete account
+    accounts.splice(index, 1);
+
+    // Hide UI
+    containerApp.style.opacity = 0;
+  }
+  inputCloseUsername.value = inputClosePin.value = '';
 });
